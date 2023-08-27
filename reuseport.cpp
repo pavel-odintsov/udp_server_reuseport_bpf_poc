@@ -128,7 +128,7 @@ void capture_traffic_from_socket(int sockfd, std::size_t thread_id) {
 void print_speed(uint32_t number_of_thread) {
     std::array<uint64_t, 512> packets_per_thread_previous = packets_per_thread;
 
-    std::cerr << "Thread ID"
+    std::cout << "Thread ID"
               << "\t"
               << "UDP packet / second" << std::endl;
 
@@ -141,6 +141,24 @@ void print_speed(uint32_t number_of_thread) {
 
         packets_per_thread_previous = packets_per_thread;
     }
+}
+
+bool set_process_name(std::thread& thread, const std::string& process_name) {
+    if (process_name.size() > 15) {
+        return false;
+    }
+
+    // The buffer specified by name should be at least 16 characters in length.
+    char new_process_name[16];
+    strcpy(new_process_name, process_name.c_str());
+
+    int result = pthread_setname_np(thread.native_handle(), new_process_name);
+
+    if (result != 0) {
+        return false;
+    }
+
+    return true;
 }
 
 int main() {
@@ -161,7 +179,9 @@ int main() {
             exit(1);
         }
 
+        // Start traffic capture
         std::thread current_thread(capture_traffic_from_socket, socket_fd, thread_id);
+        set_process_name(current_thread, "udp_thread_" + std::to_string(thread_id));
         thread_group.push_back(std::move(current_thread));
     }
 
